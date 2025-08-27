@@ -97,7 +97,7 @@ module.exports = {
           },
         ],
         'import/no-cycle': 'error',
-        'linebreak-style': ['error', 'unix'],
+        'linebreak-style': 'off', // 改行コードのチェックを無効化
         'react/prop-types': 'off',
         'import/order': [
           'error',

@@ -1,0 +1,10 @@
+{
+  // ファイル保存時に自動でフォーマットする
+  "editor.formatOnSave": true,
+
+  // このプロジェクトでの既定のフォーマッターをPrettierに指定
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // 新規作成ファイルの改行コードをLFに強制する
+  "files.eol": "\n"
+}
