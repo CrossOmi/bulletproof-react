@@ -11,7 +11,6 @@ A team is created during the registration if the user didn't choose to join an e
 The application contains the following models:
 
 - User - can have one of these roles:
-
   - `ADMIN` can:
     - create/edit/delete discussions
     - create/delete all comments

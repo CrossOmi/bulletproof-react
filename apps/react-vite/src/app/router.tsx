@@ -38,8 +38,6 @@ const convert = (queryClient: QueryClient) => (m: any) => {
  * @returns React Routerのルーターインスタンス
  */
 export const createAppRouter = (queryClient: QueryClient) =>
-
-
   createBrowserRouter([
     // ホームページ (ランディングページ) のルート設定
     {
@@ -107,8 +105,6 @@ export const AppRouter = () => {
   // 1. データキャッシュ (The Library's Shelves): APIから取得したすべてのデータを保持する場所。
 
   // 2. APIメソッド (The Librarian): そのキャッシュを操作するための様々な命令（関数）。
-
-
 
   // 2. `useMemo` を使って、ルーターのインスタンス生成処理を最適化する。
   //    これにより、不要な再レンダリング時に関数が再実行されるのを防ぎ、
