@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 
 export type Notification = {
   id: string;
@@ -14,19 +15,28 @@ type NotificationsStore = {
   dismissNotification: (id: string) => void;
 };
 
-export const useNotifications = create<NotificationsStore>((set) => ({
-  notifications: [],
-  addNotification: (notification) =>
-    set((state) => ({
-      notifications: [
-        ...state.notifications,
-        { id: nanoid(), ...notification },
-      ],
-    })),
-  dismissNotification: (id) =>
-    set((state) => ({
-      notifications: state.notifications.filter(
-        (notification) => notification.id !== id,
-      ),
-    })),
-}));
+// createの中身をdevtoolsでラップします
+export const useNotifications = create(
+  devtools<NotificationsStore>(
+    (set) => ({
+      notifications: [],
+      addNotification: (notification) =>
+        set((state) => ({
+          notifications: [
+            ...state.notifications,
+            { id: nanoid(), ...notification },
+          ],
+        })),
+      dismissNotification: (id) =>
+        set((state) => ({
+          notifications: state.notifications.filter(
+            (notification) => notification.id !== id,
+          ),
+        })),
+    }),
+    {
+      // DevTools上で表示されるストア名
+      name: 'notifications-store',
+    },
+  ),
+);
