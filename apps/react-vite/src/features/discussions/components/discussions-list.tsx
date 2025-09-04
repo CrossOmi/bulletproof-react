@@ -1,30 +1,27 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router';
+import { Link, useSearchParams } from 'react-router-dom'; // react-router-dom -> react-router には Link と useSearchParams がないため、react-router-dom のままにする
+import { clsx } from 'clsx';
 
-import { Link } from '@/components/ui/link';
+import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
-import { Table } from '@/components/ui/table';
+import { Table, TableCell, TableRow } from '@/components/ui/table';
 import { paths } from '@/config/paths';
 import { formatDate } from '@/utils/format';
+import { Authorization } from '@/lib/authorization';
 
 import { getDiscussionQueryOptions } from '../api/get-discussion';
 import { useDiscussions } from '../api/get-discussions';
-
 import { DeleteDiscussion } from './delete-discussion';
+import { useFavoritesStore } from '../stores/favorites-store';
+import { FavoriteButton } from './favorite-button';
 
-export type DiscussionsListProps = {
-  onDiscussionPrefetch?: (id: string) => void;
-};
-
-export const DiscussionsList = ({
-  onDiscussionPrefetch,
-}: DiscussionsListProps) => {
+export const DiscussionsList = () => {
   const [searchParams] = useSearchParams();
-
   const discussionsQuery = useDiscussions({
     page: +(searchParams.get('page') || 1),
   });
   const queryClient = useQueryClient();
+  const { favoriteIds, toggleFavorite } = useFavoritesStore();
 
   if (discussionsQuery.isLoading) {
     return (
@@ -44,6 +41,21 @@ export const DiscussionsList = ({
       data={discussions}
       columns={[
         {
+          title: '',
+          field: 'id',
+          Cell({ entry: { id } }) {
+            const isFavorite = favoriteIds.includes(id);
+            return (
+              <TableCell className="w-10">
+                <FavoriteButton
+                  isFavorite={isFavorite}
+                  onClick={() => toggleFavorite(id)}
+                />
+              </TableCell>
+            );
+          },
+        },
+        {
           title: 'Title',
           field: 'title',
         },
@@ -61,9 +73,7 @@ export const DiscussionsList = ({
             return (
               <Link
                 onMouseEnter={() => {
-                  // Prefetch the discussion data when the user hovers over the link
                   queryClient.prefetchQuery(getDiscussionQueryOptions(id));
-                  onDiscussionPrefetch?.(id);
                 }}
                 to={paths.app.discussion.getHref(id)}
               >
@@ -76,15 +86,29 @@ export const DiscussionsList = ({
           title: '',
           field: 'id',
           Cell({ entry: { id } }) {
-            return <DeleteDiscussion id={id} />;
+            return (
+              <Authorization allowedRoles={['ADMIN']}>
+                <DeleteDiscussion id={id} />
+              </Authorization>
+            );
           },
         },
       ]}
+      renderRow={(discussion) => {
+        const isFavorite = favoriteIds.includes(discussion.id);
+        return (
+          <TableRow
+            key={discussion.id}
+            className={clsx(
+              isFavorite && 'bg-yellow-100/70 hover:bg-yellow-100',
+            )}
+          />
+        );
+      }}
       pagination={
         meta && {
           totalPages: meta.totalPages,
           currentPage: meta.page,
-          rootUrl: '',
         }
       }
     />
