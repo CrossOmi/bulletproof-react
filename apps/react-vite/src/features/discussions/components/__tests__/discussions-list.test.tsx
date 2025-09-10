@@ -35,6 +35,63 @@ vi.mock('@/lib/authorization', () => ({
   },
 }));
 
+// Stub: Table とその関連コンポーネントを簡易実装に置き換える（スタブ化）
+vi.mock('@/components/ui/table', () => {
+  const React = require('react');
+  return {
+    // Table: columns を使って各セルを描画し、renderRow が渡す className を tr に反映する
+    Table: ({ data, columns, renderRow }: any) =>
+      React.createElement(
+        'table',
+        {},
+        React.createElement(
+          'tbody',
+          {},
+          (data || []).map((d: any) => {
+            const rowEl = typeof renderRow === 'function' ? renderRow(d) : null;
+            const className = rowEl?.props?.className ?? '';
+
+            // columns を使って各セルを実行する（col.Cell が FavoriteButton を描画する）
+            const cells = (columns || []).map((col: any, i: number) =>
+              React.createElement(
+                'td',
+                { key: i },
+                col.Cell ? col.Cell({ entry: d }) : d[col.field],
+              ),
+            );
+
+            return React.createElement(
+              'tr',
+              { key: d.id, className, role: 'row' },
+              ...cells,
+            );
+          }),
+        ),
+      ),
+    TableCell: ({ children, className }: any) =>
+      React.createElement('td', { className }, children),
+    TableRow: ({ children, className }: any) =>
+      React.createElement('tr', { className }, children),
+  };
+});
+
+// Stub: FavoriteButton を簡素化して isFavorite を class に反映し、onClick を受け取る
+vi.mock('../favorite-button', () => {
+  const React = require('react');
+  return {
+    FavoriteButton: ({ isFavorite, onClick }: any) =>
+      React.createElement(
+        'button',
+        {
+          'aria-label': 'Toggle Favorite',
+          onClick,
+          className: isFavorite ? 'fav-true' : 'fav-false',
+        },
+        'favorite',
+      ),
+  };
+});
+
 // 2. 外部ライブラリのインポート (ESLintの順序ルールに準拠)
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -113,18 +170,28 @@ describe('DiscussionsList', () => {
   });
 
   it('should apply a highlight style to the row of a favorited discussion', () => {
+    // テストの目的: お気に入りに登録されたディスカッションの行が
+    // ハイライト用のCSSクラスを持っていることを確認する
+
+    // 1) useFavoritesStore をモックして、discussion1Id がお気に入りである状態を作る
+    //    mockReturnValue で返すオブジェクトは実際のストアが提供する形に合わせる
     (useFavoritesStore as any).mockReturnValue({
       favoriteIds: [discussion1Id],
       toggleFavorite: mockToggleFavorite,
     });
 
+    // 2) コンポーネントをレンダリングする
+    //    QueryClientProvider や MemoryRouter は上でラップされているヘルパーを使う
     renderWithClient(
       <MemoryRouter>
         <DiscussionsList />
       </MemoryRouter>,
     );
 
+    // 3) DOMから、タイトル "First Discussion" を含む行 (<tr> など) を取得する
+    //    getByRole('row', { name: /First Discussion/i }) はその行のアクセシブル名を探している
     const favoritedRow = screen.getByRole('row', { name: /First Discussion/i });
+    // 監督（DiscussionsList）が行（tr）にハイライトのクラスを付けているかを確認する
     expect(favoritedRow).toHaveClass('bg-yellow-100/70');
 
     const nonFavoritedRow = screen.getByRole('row', {
