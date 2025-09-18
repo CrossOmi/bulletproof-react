@@ -16,6 +16,7 @@ type DiscussionBody = {
 };
 
 export const discussionsHandlers = [
+  // ▼▼▼ このハンドラをまるごと置き換えてください ▼▼▼
   http.get(`${env.API_URL}/discussions`, async ({ cookies, request }) => {
     await networkDelay();
 
@@ -28,28 +29,34 @@ export const discussionsHandlers = [
       const url = new URL(request.url);
 
       const page = Number(url.searchParams.get('page') || 1);
+      const q = url.searchParams.get('q'); // 1. 検索クエリ 'q' を取得
 
-      const total = db.discussion.count({
-        where: {
-          teamId: {
-            equals: user?.teamId,
-          },
+      // 2. 検索条件を動的に構築
+      const where = {
+        teamId: {
+          equals: user?.teamId,
         },
-      });
+        ...(q && {
+          title: {
+            contains: q,
+          },
+        }),
+      };
+
+      // 3. 検索条件を考慮して合計件数をカウント
+      const total = db.discussion.count({ where });
 
       const totalPages = Math.ceil(total / 10);
 
+      // 4. 検索条件を考慮してデータを取得
       const result = db.discussion
         .findMany({
-          where: {
-            teamId: {
-              equals: user?.teamId,
-            },
-          },
+          where, // 更新された 'where' を使用
           take: 10,
           skip: 10 * (page - 1),
         })
         .map(({ authorId, ...discussion }) => {
+          // ... (mapの中身は変更なし)
           const author = db.user.findFirst({
             where: {
               id: {
@@ -62,6 +69,7 @@ export const discussionsHandlers = [
             author: author ? sanitizeUser(author) : {},
           };
         });
+
       return HttpResponse.json({
         data: result,
         meta: {
@@ -77,6 +85,7 @@ export const discussionsHandlers = [
       );
     }
   }),
+  // ▲▲▲ ここまでが置き換えの対象です ▲▲▲
 
   http.get(
     `${env.API_URL}/discussions/:discussionId`,
