@@ -27,7 +27,6 @@ const createDiscussion = (title: string, authorId: string, teamId: string) => {
   });
 };
 
-// ... authHandler はこのテストでは直接使われませんが、念のため残しておきます
 const authHandler = http.get(`${env.API_URL}/auth/me`, () => {
   return HttpResponse.json({ data: mockUser });
 });
