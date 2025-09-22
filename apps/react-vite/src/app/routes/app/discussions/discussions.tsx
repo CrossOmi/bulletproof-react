@@ -13,9 +13,14 @@ export const clientLoader =
     const url = new URL(request.url);
 
     const page = Number(url.searchParams.get('page') || 1);
+    // 1. URLから検索クエリ 'q' を取得します
+    const q = url.searchParams.get('q') || undefined;
 
-    const query = getDiscussionsQueryOptions({ page });
+    // 2. getDiscussionsQueryOptions に 'q' を渡します
+    const query = getDiscussionsQueryOptions({ page, q });
 
+    // この部分がReact Queryを呼び出し、
+    // 正しいqueryKeyでデータをキャッシュから探すか、APIから取得します
     return (
       queryClient.getQueryData(query.queryKey) ??
       (await queryClient.fetchQuery(query))
