@@ -1,6 +1,17 @@
 import { createUser, renderApp, screen } from '@/testing/test-utils';
 
 import { Authorization, ROLES } from '../authorization';
+import { server } from '@/testing/mocks/server';
+
+// テスト全体の前にMSWサーバーを起動する
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+
+// テスト全体の後にMSWサーバーを閉じる
+afterAll(() => server.close());
+
+// 各テストが終わるたびに、リクエストハンドラをリセットする
+afterEach(() => server.resetHandlers());
+// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 test('should view protected resource if user role is matching', async () => {
   const user = await createUser({
