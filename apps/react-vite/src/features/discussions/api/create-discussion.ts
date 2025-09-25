@@ -36,7 +36,7 @@ export const useCreateDiscussion = ({
   return useMutation({
     onSuccess: (...args) => {
       queryClient.invalidateQueries({
-        queryKey: getDiscussionsQueryOptions().queryKey,
+        queryKey: ['discussions'],
       });
       onSuccess?.(...args);
     },
