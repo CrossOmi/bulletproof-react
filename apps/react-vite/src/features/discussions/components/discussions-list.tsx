@@ -1,6 +1,8 @@
+// src/features/discussions/components/discussions-list.tsx
+
 import { useQueryClient } from '@tanstack/react-query';
 import { clsx } from 'clsx';
-import { Link, useSearchParams } from 'react-router-dom'; // react-router-dom -> react-router には Link と useSearchParams がないため、react-router-dom のままにする
+import { Link, useSearchParams } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -10,16 +12,26 @@ import { formatDate } from '@/utils/format';
 import { Authorization } from '@/lib/authorization';
 
 import { getDiscussionQueryOptions } from '../api/get-discussion';
-import { useDiscussions } from '../api/get-discussions';
+import { useDiscussions } from '../api/get-discussions'; // useDiscussionsフックをインポート
 import { DeleteDiscussion } from './delete-discussion';
 import { useFavoritesStore } from '../stores/favorites-store';
 import { FavoriteButton } from './favorite-button';
 
-export const DiscussionsList = () => {
+// DiscussionsListProps の型定義を追加
+type DiscussionsListProps = {
+  searchTerm: string; // ▼▼▼ ここを追加 ▼▼▼
+};
+
+export const DiscussionsList = ({ searchTerm }: DiscussionsListProps) => {
+  // ▼▼▼ ここを更新 ▼▼▼
   const [searchParams] = useSearchParams();
+
+  // useDiscussions フックに page と q (searchTerm) を渡すように変更
   const discussionsQuery = useDiscussions({
     page: +(searchParams.get('page') || 1),
+    q: searchTerm, // ▼▼▼ ここを追加 ▼▼▼
   });
+
   const queryClient = useQueryClient();
   const { favoriteIds, toggleFavorite } = useFavoritesStore();
 
@@ -31,10 +43,19 @@ export const DiscussionsList = () => {
     );
   }
 
+  // エラー時の処理は現状のまま（useDiscussionsがエラーハンドリングしていると仮定）
+  // データが取得できない場合（例えば、検索結果がない場合）の表示
   const discussions = discussionsQuery.data?.data;
   const meta = discussionsQuery.data?.meta;
 
-  if (!discussions) return null;
+  if (!discussions || discussions.length === 0) {
+    // データがない、または空の場合（英語表示を削除して日本語のみ）
+    return (
+      <div className="flex h-48 w-full items-center justify-center text-gray-500">
+        ディスカッションが見つかりませんでした。
+      </div>
+    );
+  }
 
   return (
     <Table
@@ -44,20 +65,25 @@ export const DiscussionsList = () => {
           title: '',
           field: 'id',
           Cell({ entry: { id } }) {
+            // Table 内では既に <td> が出力される想定なので、
+            // ここで <TableCell>（=td）を返すと <td> の中に <td> が入ってしまう。
+            // そのため単純なブロック要素で包んで返す。
             const isFavorite = favoriteIds.includes(id);
             return (
-              <TableCell className="w-10">
+              <div className="w-10">
                 <FavoriteButton
                   isFavorite={isFavorite}
                   onClick={() => toggleFavorite(id)}
                 />
-              </TableCell>
+              </div>
             );
           },
         },
         {
           title: 'Title',
           field: 'title',
+          // 検索キーワードにマッチする部分をハイライト表示するなどの拡張も可能だが、
+          // まずはフィルタリングのみに集中
         },
         {
           title: 'Created At',

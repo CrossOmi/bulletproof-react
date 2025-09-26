@@ -42,7 +42,9 @@ test(
     const newDiscussion = createDiscussion();
 
     // MSWが正しく動作すれば、この行は成功するはずです
-    expect(await screen.findByText(/no entries/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/ディスカッションが見つかりませんでした。/i),
+    ).toBeInTheDocument();
 
     await userEvent.click(
       screen.getByRole('button', { name: /create discussion/i }),
@@ -205,7 +207,7 @@ describe('Discussions features', () => {
     // そのため、このテストは「ボタンを押すとsubmittedQueryが更新される"はず"」
     // という意図の表明となります。
 
-    // しかし、Testing Libraryの哲学に従うと、目に見える変化をテストすべきです。
+    // Testing Libraryの哲学に従うと、目に見える変化をテストすべきです。
     // 暫定的なテストとしてはこれでOKとし、次の「データ連携」タスクで、
     // 実際にリストの内容がフィルターされることをもって、submittedQueryの更新を検証します。
 
