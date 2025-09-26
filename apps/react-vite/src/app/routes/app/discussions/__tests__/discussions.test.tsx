@@ -10,9 +10,9 @@ import {
   screen,
   userEvent,
   waitFor,
+  waitForElementToBeRemoved,
   within,
 } from '@/testing/test-utils';
-import { formatDate } from '@/utils/format';
 
 import { default as DiscussionsRoute } from '../discussions';
 
@@ -111,3 +111,35 @@ test(
     ).not.toBeInTheDocument();
   },
 );
+
+describe('Discussions features', () => {
+  // should display search input field テストを一時的に変更
+  it('should display search input field', async () => {
+    await renderApp(<DiscussionsRoute />);
+
+    // ▼▼▼ ここを findBy に変更 ▼▼▼
+    // getByではなく、findByを使い、awaitで待つ
+    const searchInput =
+      await screen.findByPlaceholderText(/ディスカッションを検索\.\.\./i);
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+    // findByが成功した時点で要素は存在するので、このアサーションは成功する
+    expect(searchInput).toBeInTheDocument();
+  });
+
+  it('should be able to type in search input field', async () => {
+    renderApp(<DiscussionsRoute />);
+
+    // ▼▼▼ ここも findBy に変更 ▼▼▼
+    const searchInput = (await screen.findByPlaceholderText(
+      /ディスカッションを検索\.\.\./i,
+    )) as HTMLInputElement;
+    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+    // ユーザーが検索ボックスにテキストを入力
+    await userEvent.type(searchInput, 'test query');
+
+    // 入力されたテキストが検索ボックスのvalueに反映されていることを確認
+    expect(searchInput.value).toBe('test query');
+  });
+});

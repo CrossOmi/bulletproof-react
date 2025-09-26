@@ -1,4 +1,5 @@
 import { QueryClient, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { LoaderFunctionArgs } from 'react-router';
 
 import { ContentLayout } from '@/components/layouts';
@@ -13,14 +14,10 @@ export const clientLoader =
     const url = new URL(request.url);
 
     const page = Number(url.searchParams.get('page') || 1);
-    // 1. URLから検索クエリ 'q' を取得します
     const q = url.searchParams.get('q') || undefined;
 
-    // 2. getDiscussionsQueryOptions に 'q' を渡します
     const query = getDiscussionsQueryOptions({ page, q });
 
-    // この部分がReact Queryを呼び出し、
-    // 正しいqueryKeyでデータをキャッシュから探すか、APIから取得します
     return (
       queryClient.getQueryData(query.queryKey) ??
       (await queryClient.fetchQuery(query))
@@ -29,15 +26,44 @@ export const clientLoader =
 
 const DiscussionsRoute = () => {
   const queryClient = useQueryClient();
+  const [searchTerm, setSearchTerm] = useState('');
+
   return (
-    <ContentLayout title="Discussions">
-      <div className="flex justify-end">
+    // ContentLayoutのtitleプロップでページタイトルを管理
+    <ContentLayout title="ディスカッション">
+      {' '}
+      {/* タイトルを日本語に修正 */}
+      {/* 検索ボックスとCreateDiscussionボタンを別々のブロックに配置 */}
+      {/* 検索ボックスのコンテナ */}
+      <div className="mb-4 flex justify-start">
+        {' '}
+        {/* 左寄せにするため justify-start に変更 */}
+        <div className="w-64">
+          {' '}
+          {/* 検索ボックスの幅を制限 */}
+          <label htmlFor="search" className="sr-only">
+            検索
+          </label>
+          <input
+            type="search"
+            name="search"
+            id="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="ディスカッションを検索..."
+          />
+        </div>
+      </div>
+      {/* Create Discussion ボタンのコンテナ (右寄せ) */}
+      <div className="flex justify-end mb-4">
+        {' '}
+        {/* 右寄せにして、DiscussionsListの上に余白を追加 */}
         <CreateDiscussion />
       </div>
       <div className="mt-4">
         <DiscussionsList
           onDiscussionPrefetch={(id) => {
-            // Prefetch the comments data when the user hovers over the link in the list
             queryClient.prefetchInfiniteQuery(
               getInfiniteCommentsQueryOptions(id),
             );
