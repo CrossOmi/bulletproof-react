@@ -1,8 +1,11 @@
+// src/features/discussions/routes/Discussions.tsx
+
 import { QueryClient, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { LoaderFunctionArgs } from 'react-router';
 
 import { ContentLayout } from '@/components/layouts';
+import { Button } from '@/components/ui/button'; // Buttonコンポーネントをインポート
 import { getInfiniteCommentsQueryOptions } from '@/features/comments/api/get-comments';
 import { getDiscussionsQueryOptions } from '@/features/discussions/api/get-discussions';
 import { CreateDiscussion } from '@/features/discussions/components/create-discussion';
@@ -14,7 +17,7 @@ export const clientLoader =
     const url = new URL(request.url);
 
     const page = Number(url.searchParams.get('page') || 1);
-    const q = url.searchParams.get('q') || undefined;
+    const q = url.searchParams.get('q') || undefined; // クエリパラメータから 'q' を取得
 
     const query = getDiscussionsQueryOptions({ page, q });
 
@@ -26,21 +29,26 @@ export const clientLoader =
 
 const DiscussionsRoute = () => {
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [inputValue, setInputValue] = useState(''); // inputのリアルタイム表示用
+  const [submittedQuery, setSubmittedQuery] = useState(''); // APIに渡す実際の検索クエリ用
+
+  // 検索実行ハンドラ
+  const handleSearch = () => {
+    setSubmittedQuery(inputValue); // リアルタイムのinputValueをAPI用のsubmittedQueryにセット
+  };
+
+  // Enterキーが押された時のハンドラ
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleSearch(); // Enterキーで検索実行
+    }
+  };
 
   return (
-    // ContentLayoutのtitleプロップでページタイトルを管理
     <ContentLayout title="ディスカッション">
-      {' '}
-      {/* タイトルを日本語に修正 */}
-      {/* 検索ボックスとCreateDiscussionボタンを別々のブロックに配置 */}
-      {/* 検索ボックスのコンテナ */}
-      <div className="mb-4 flex justify-start">
-        {' '}
-        {/* 左寄せにするため justify-start に変更 */}
-        <div className="w-64">
-          {' '}
-          {/* 検索ボックスの幅を制限 */}
+      <div className="mb-4 flex justify-between items-center">
+        {/* 検索ボックスとボタンのコンテナ */}
+        <div className="flex items-center space-x-2">
           <label htmlFor="search" className="sr-only">
             検索
           </label>
@@ -48,21 +56,24 @@ const DiscussionsRoute = () => {
             type="search"
             name="search"
             id="search"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            value={inputValue} // inputValue を使用
+            onChange={(e) => setInputValue(e.target.value)} // setInputValue を使用
+            onKeyDown={handleKeyDown}
+            className="block w-64 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             placeholder="ディスカッションを検索..."
           />
+          <Button onClick={handleSearch} className="whitespace-nowrap">
+            検索
+          </Button>
         </div>
-      </div>
-      {/* Create Discussion ボタンのコンテナ (右寄せ) */}
-      <div className="flex justify-end mb-4">
-        {' '}
-        {/* 右寄せにして、DiscussionsListの上に余白を追加 */}
+        {/* Create Discussion ボタン */}
         <CreateDiscussion />
       </div>
+
       <div className="mt-4">
+        {/* DiscussionsList に submittedQuery を渡す (まだ実装されていませんが、将来的に使う) */}
         <DiscussionsList
+          searchTerm={submittedQuery} // submittedQuery を渡すように変更
           onDiscussionPrefetch={(id) => {
             queryClient.prefetchInfiniteQuery(
               getInfiniteCommentsQueryOptions(id),

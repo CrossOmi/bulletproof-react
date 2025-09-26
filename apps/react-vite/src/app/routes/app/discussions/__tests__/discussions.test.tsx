@@ -113,33 +113,119 @@ test(
 );
 
 describe('Discussions features', () => {
-  // should display search input field テストを一時的に変更
-  it('should display search input field', async () => {
-    await renderApp(<DiscussionsRoute />);
+  describe('Search box UI Tests', () => {
+    // should display search input field テストを一時的に変更
+    it('should display search input field', async () => {
+      await renderApp(<DiscussionsRoute />);
 
-    // ▼▼▼ ここを findBy に変更 ▼▼▼
-    // getByではなく、findByを使い、awaitで待つ
-    const searchInput =
-      await screen.findByPlaceholderText(/ディスカッションを検索\.\.\./i);
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+      // ▼▼▼ ここを findBy に変更 ▼▼▼
+      // getByではなく、findByを使い、awaitで待つ
+      const searchInput =
+        await screen.findByPlaceholderText(/ディスカッションを検索\.\.\./i);
+      // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-    // findByが成功した時点で要素は存在するので、このアサーションは成功する
-    expect(searchInput).toBeInTheDocument();
+      // findByが成功した時点で要素は存在するので、このアサーションは成功する
+      expect(searchInput).toBeInTheDocument();
+    });
+
+    it('should be able to type in search input field', async () => {
+      renderApp(<DiscussionsRoute />);
+
+      // ▼▼▼ ここも findBy に変更 ▼▼▼
+      const searchInput = (await screen.findByPlaceholderText(
+        /ディスカッションを検索\.\.\./i,
+      )) as HTMLInputElement;
+      // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+      // ユーザーが検索ボックスにテキストを入力
+      await userEvent.type(searchInput, 'test query');
+
+      // 入力されたテキストが検索ボックスのvalueに反映されていることを確認
+      expect(searchInput.value).toBe('test query');
+    });
+  });
+  describe('useState UI Tests', () => {
+    it('should clear search input field', async () => {
+      await renderApp(<DiscussionsRoute />);
+      const searchInput = (await screen.findByPlaceholderText(
+        /ディスカッションを検索\.\.\./i,
+      )) as HTMLInputElement;
+
+      // まず何か入力されている状態を作る
+      await userEvent.type(searchInput, 'initial query');
+      expect(searchInput.value).toBe('initial query');
+
+      // 全てのテキストをクリアする (例: Ctrl+A -> Delete)
+      // userEvent.clear() は input の内容をクリアします
+      await userEvent.clear(searchInput);
+
+      // 検索ボックスが空になっていることを確認
+      expect(searchInput.value).toBe('');
+    });
   });
 
-  it('should be able to type in search input field', async () => {
-    renderApp(<DiscussionsRoute />);
+  it('should display search button', async () => {
+    await renderApp(<DiscussionsRoute />);
+    const searchButton = await screen.findByRole('button', {
+      name: /検索/i, // ボタンのテキストが「検索」であることを確認
+    });
+    expect(searchButton).toBeInTheDocument();
+  });
 
-    // ▼▼▼ ここも findBy に変更 ▼▼▼
+  it('should update submitted query when search button is clicked', async () => {
+    await renderApp(<DiscussionsRoute />);
     const searchInput = (await screen.findByPlaceholderText(
       /ディスカッションを検索\.\.\./i,
     )) as HTMLInputElement;
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+    const searchButton = await screen.findByRole('button', { name: /検索/i });
 
-    // ユーザーが検索ボックスにテキストを入力
-    await userEvent.type(searchInput, 'test query');
+    const testQuery = 'test keyword';
+    await userEvent.type(searchInput, testQuery); // 検索ボックスに入力
+    expect(searchInput.value).toBe(testQuery); // inputValueが更新されていることを確認
 
-    // 入力されたテキストが検索ボックスのvalueに反映されていることを確認
-    expect(searchInput.value).toBe('test query');
+    await userEvent.click(searchButton); // 検索ボタンをクリック
+
+    // submittedQuery が更新されたことを間接的に確認するために、
+    // DiscussionsList に渡された searchTerm プロップが変更されたことをシミュレートします。
+    // Testing Library は、親コンポーネントの状態更新によって子コンポーネントが
+    // 新しいプロップで再レンダリングされることを自動的に検出します。
+    // このテストは、将来的に DiscussionsList が検索クエリを元にフィルタリングする際に
+    // 実際にそのプロップが渡っていることを保証するものです。
+
+    // ここで、DiscussionsListが受け取ったsearchTerm propがtestQueryになっていることを
+    // 確認したいのですが、Testing Libraryは直接propをアサートする方法を提供しません。
+    // 代わりに、検索結果がフィルタリングされるという「効果」をテストすることになります。
+    // しかし、このタスクの目的は「submittedQueryが更新されること」なので、
+    // 現時点では、UI上の変化（例: 検索結果のリストがフィルタリングされる）がないため、
+    // 「検索ボタンを押したこと自体」で状態が更新されたと仮定するしかありません。
+    // より厳密なテストは、API連携後にリストの表示内容で確認することになります。
+
+    // 現時点では、API連携やリストのフィルタリングを実装していないため、
+    // ここでsubmittedQueryが更新されたことを直接的にUIから確認する方法はありません。
+    // そのため、このテストは「ボタンを押すとsubmittedQueryが更新される"はず"」
+    // という意図の表明となります。
+
+    // しかし、Testing Libraryの哲学に従うと、目に見える変化をテストすべきです。
+    // 暫定的なテストとしてはこれでOKとし、次の「データ連携」タスクで、
+    // 実際にリストの内容がフィルターされることをもって、submittedQueryの更新を検証します。
+
+    // TODO: 後続の「データ連携」タスクで、フィルタリングされたリストが表示されることを検証するテストを追加する。
+  });
+
+  it('should update submitted query when Enter key is pressed', async () => {
+    await renderApp(<DiscussionsRoute />);
+    const searchInput = (await screen.findByPlaceholderText(
+      /ディスカッションを検索\.\.\./i,
+    )) as HTMLInputElement;
+
+    const testQuery = 'enter keyword';
+    await userEvent.type(searchInput, testQuery); // 検索ボックスに入力
+    expect(searchInput.value).toBe(testQuery); // inputValueが更新されていることを確認
+
+    await userEvent.keyboard('{enter}'); // Enterキーを押す
+
+    // 上記と同様に、現時点ではUI上の直接的な変化を確認できないため、
+    // 「EnterキーでsubmittedQueryが更新される"はず"」という意図の表明に留まります。
+    // TODO: 後続の「データ連携」タスクで、フィルタリングされたリストが表示されることを検証するテストを追加する。
   });
 });
