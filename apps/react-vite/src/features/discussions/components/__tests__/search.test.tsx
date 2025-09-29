@@ -1,23 +1,36 @@
+// src/features/discussions/components/__tests__/search.test.tsx
+
+import type { Mock } from 'vitest';
 import '@testing-library/jest-dom';
-import { rest } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { server } from '@/testing/mocks/server';
-import { renderApp, screen, userEvent } from '@/testing/test-utils';
+import { renderApp, screen, userEvent, waitFor } from '@/testing/test-utils';
 import { createDiscussion } from '@/testing/data-generators';
 import DiscussionsRoute from '@/app/routes/app/discussions/discussions';
-import { input } from '@testing-library/user-event/dist/cjs/event/input.js';
-import { b, a } from 'vitest/dist/chunks/suite.B2jumIFP.js';
+
+beforeAll(() => {
+  server.listen({ onUnhandledRequest: 'error' });
+  vi.spyOn(console, 'error').mockImplementation(() => {});
+});
+
+afterAll(() => {
+  server.close();
+  (console.error as Mock).mockRestore();
+});
+
+afterEach(() => {
+  server.resetHandlers();
+});
 
 describe('Discussions search integration', () => {
   it('filters list when search button is clicked', async () => {
     const a = createDiscussion({ title: 'Apple pie' });
     const b = createDiscussion({ title: 'Banana split' });
 
-    // /api/discussions を q に応じてフィルタするハンドラを差し替え
+    // MSW v2の正しい構文でハンドラーを追加
     server.use(
-      rest.get('/api/discussions', (req, res, ctx) => {
-        // req.url が文字列の場合があるので安全に URL オブジェクト化
-        const url =
-          typeof req.url === 'string' ? new URL(req.url, 'http://localhost') : req.url;
+      http.get('*/discussions', ({ request }) => {
+        const url = new URL(request.url);
         const q = url.searchParams.get('q') || '';
         const page = Number(url.searchParams.get('page') || 1);
         let items = [a, b];
@@ -26,29 +39,41 @@ describe('Discussions search integration', () => {
             it.title.toLowerCase().includes(q.toLowerCase()),
           );
         }
-        return res(
-          ctx.status(200),
-          ctx.json({
-            data: items,
-            meta: { page, totalPages: 1 },
-          }),
-        );
+
+        // MSW v2のHttpResponseを使用
+        return HttpResponse.json({
+          data: items,
+          meta: {
+            page,
+            total: items.length,
+            totalPages: 1,
+          },
+        });
       }),
     );
 
     await renderApp(<DiscussionsRoute />);
+    console.log('Rendered DiscussionsRoute');
 
-    // 初期表示では両方見えるはず
-    expect(await screen.findByRole('cell', { name: a.title })).toBeInTheDocument();
-    expect(await screen.findByRole('cell', { name: b.title })).toBeInTheDocument();
+    // 初期状態で両方のディスカッションが表示されていることを確認
+    expect(
+      await screen.findByRole('cell', { name: a.title }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: b.title })).toBeInTheDocument();
 
-    // 検索して "Apple" のみ残ることを確認
-    const input = await screen.findByPlaceholderText(/ディスカッションを検索\.\.\./i);
+    // 検索を実行
+    const input =
+      await screen.findByPlaceholderText(/ディスカッションを検索\.\.\./i);
     await userEvent.type(input, 'Apple');
     await userEvent.click(await screen.findByRole('button', { name: /検索/i }));
 
-    expect(await screen.findByRole('cell', { name: a.title })).toBeInTheDocument();
-    expect(screen.queryByRole('cell', { name: b.title })).not.toBeInTheDocument();
+    // フィルタリング結果を待機して確認
+    await waitFor(() => {
+      expect(screen.getByRole('cell', { name: a.title })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('cell', { name: b.title }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('filters list when Enter is pressed in the search input', async () => {
@@ -56,51 +81,49 @@ describe('Discussions search integration', () => {
     const b = createDiscussion({ title: 'Grape jelly' });
 
     server.use(
-      rest.get('/api/discussions', (req, res, ctx) => {
-        // 同様に安全に URL を取得
-        const url =
-          typeof req.url === 'string' ? new URL(req.url, 'http://localhost') : req.url;
+      http.get('*/discussions', ({ request }) => {
+        const url = new URL(request.url);
         const q = url.searchParams.get('q') || '';
         const page = Number(url.searchParams.get('page') || 1);
+
         let items = [a, b];
         if (q) {
           items = items.filter((it) =>
             it.title.toLowerCase().includes(q.toLowerCase()),
           );
         }
-        return res(
-          ctx.status(200),
-          ctx.json({
-            data: items,
-            meta: { page, totalPages: 1 },
-          }),
-        );
+
+        return HttpResponse.json({
+          data: items,
+          meta: {
+            page,
+            total: items.length,
+            totalPages: 1,
+          },
+        });
       }),
     );
 
     await renderApp(<DiscussionsRoute />);
 
-    // 初期表示で両方見える
-    expect(await screen.findByRole('cell', { name: a.title })).toBeInTheDocument();
-    expect(await screen.findByRole('cell', { name: b.title })).toBeInTheDocument();
+    // 初期状態で両方のディスカッションが表示されていることを確認
+    expect(
+      await screen.findByRole('cell', { name: a.title }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('cell', { name: b.title })).toBeInTheDocument();
 
-    const input = await screen.findByPlaceholderText(/ディスカッションを検索\.\.\./i);
-    await userEvent.type(input, 'Grape');
-    await userEvent.keyboard('{Enter}');
-
-    expect(await screen.findByRole('cell', { name: b.title })).toBeInTheDocument();
-    expect(screen.queryByRole('cell', { name: a.title })).not.toBeInTheDocument();
-  });
-});
+    // Enterキーで検索を実行
+    const input =
       await screen.findByPlaceholderText(/ディスカッションを検索\.\.\./i);
     await userEvent.type(input, 'Grape');
     await userEvent.keyboard('{Enter}');
 
-    expect(
-      await screen.findByRole('cell', { name: b.title }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('cell', { name: a.title }),
-    ).not.toBeInTheDocument();
+    // フィルタリング結果を待機して確認
+    await waitFor(() => {
+      expect(screen.getByRole('cell', { name: b.title })).toBeInTheDocument();
+      expect(
+        screen.queryByRole('cell', { name: a.title }),
+      ).not.toBeInTheDocument();
+    });
   });
 });
